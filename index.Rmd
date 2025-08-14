@@ -1,0 +1,237 @@
+---
+title: "State Department human rights reports analysis"
+output: html_document
+---
+
+Data and [R](https://www.r-project.org/) code to reproduce the analysis underlying this Aug. 14, 2022 Inside Climate News article, analyzing the text of the 2024 edition of the U.S. State Department's Country Reports on Human Rights Practices, compared to reports from previous years.
+
+```{r setup,include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Setting up
+
+We downloaded the individual country pages for all reports from 2016 to 2024, which are in the folder `html`, then parsed their contents using the script `scraper.R`. The resulting data, including the full text of each country report, is in the file `reports.RData` in the `processed_data` folder.
+
+```{r,warning = F,message = F}
+# load required packages
+library(tidyverse)
+library(tidytext)
+library(quanteda)
+library(DT)
+library(wordcloud)
+
+# load data
+load("processed_data/reports.RData") 
+```
+
+### Mentions of specific phrases/terms
+
+This code counts mentions of specific words and the number of words in each country report, for each year.
+
+```{r,warning = F,message = F}
+# mentions of key terms and word counts for each document
+reports <- reports %>%
+  mutate(word_count = str_count(report_text,"\\S+"),
+         mentions_human_rights = str_extract_all(report_text,regex("human rights",ignore_case = TRUE),simplify = FALSE),
+         mentions_defender = str_extract_all(report_text,regex("defender",ignore_case = TRUE),simplify = FALSE),
+         mentions_journalis = str_extract_all(report_text,regex("journalis",ignore_case = TRUE),simplify = FALSE),
+         mentions_democ = str_extract_all(report_text,regex("democ",ignore_case = TRUE),simplify = FALSE),
+         mentions_lgbt = str_extract_all(report_text,regex("lgbt",ignore_case = TRUE),simplify = FALSE),
+         mentions_women = str_extract_all(report_text,regex("women",ignore_case = TRUE),simplify = FALSE),
+         mentions_gender = str_extract_all(report_text,regex("gender",ignore_case = TRUE),simplify = FALSE),
+         mentions_indigenous = str_extract_all(report_text,regex("indigenous",ignore_case = TRUE),simplify = FALSE),
+         mentions_refugee = str_extract_all(report_text,regex("refugee",ignore_case = TRUE),simplify = FALSE),
+         mentions_corrupt = str_extract_all(report_text,regex("corrupt",ignore_case = TRUE),simplify = FALSE),
+         mentions_torture = str_extract_all(report_text,regex("torture",ignore_case = TRUE),simplify = FALSE),
+         mentions_oppress = str_extract_all(report_text,regex("oppress",ignore_case = TRUE),simplify = FALSE),
+         mentions_censor = str_extract_all(report_text,regex("censor",ignore_case = TRUE),simplify = FALSE),
+         mentions_forest = str_extract_all(report_text,regex("forest",ignore_case = TRUE),simplify = FALSE),
+         mentions_logging = str_extract_all(report_text,regex("logging",ignore_case = TRUE),simplify = FALSE),
+         mentions_environmental = str_extract_all(report_text,regex("environmental",ignore_case = TRUE),simplify = FALSE),
+         mentions_climate_change = str_extract_all(report_text,regex("climate change",ignore_case = TRUE),simplify = FALSE)) %>%
+  rowwise() %>%
+  mutate(count_human_rights = length(mentions_human_rights),
+         count_defender = length(mentions_defender),
+         count_journalis = length(mentions_journalis),
+         count_democ = length(mentions_democ),
+         count_lgbt = length(mentions_lgbt),
+         count_women = length(mentions_women),
+         count_gender = length(mentions_gender),
+         count_indigenous = length(mentions_indigenous),
+         count_refugee = length(mentions_refugee),
+         count_corrupt = length(mentions_corrupt),
+         count_torture = length(mentions_torture),
+         count_oppress = length(mentions_oppress),
+         count_censor = length(mentions_censor),
+         count_forest = length(mentions_forest),
+         count_logging = length(mentions_logging),
+         count_environmental = length(mentions_environmental),
+         count_climate_change = length(mentions_climate_change)) %>%
+  ungroup()
+```
+
+### Mentions of terms by year
+
+We then summarized the data by year, calculating the rate at which each term was mentioned per 100,000 words. The summary data is saved in the file `terms_summary.csv` in the `processed_data` folder. Based on this summary, we selected specific terms/phrases for further scrutiny.
+
+```{r,warning = F,message = F}
+terms_summary <- reports %>%
+  group_by(year) %>%
+  summarize(reports = n(),
+            word_count = sum(word_count),
+            count_human_rights = sum(count_human_rights),
+            count_defender = sum(count_defender),
+            count_journalis = sum(count_journalis),
+            count_democ = sum(count_democ),
+            count_lgbt = sum(count_lgbt),
+            count_women = sum(count_women),
+            count_gender = sum(count_gender),
+            count_indigenous = sum(count_indigenous),
+            count_refugee = sum(count_refugee),
+            count_corrupt = sum(count_corrupt),
+            count_torture = sum(count_torture),
+            count_oppress = sum(count_oppress),
+            count_censor = sum(count_censor),
+            count_forest = sum(count_forest),
+            count_logging = sum(count_logging),
+            count_environmental = sum(count_environmental),
+            count_climate_change = sum(count_climate_change)) %>%
+  mutate(rate_human_rights = round(count_human_rights/word_count*10^5,2),
+         rate_defender = round(count_defender/word_count*10^5,2),
+         rate_journalis = round(count_journalis/word_count*10^5,2),
+         rate_lgbt = round(count_lgbt/word_count*10^5,2),
+         rate_women = round(count_women/word_count*10^5,2),
+         rate_gender = round(count_gender/word_count*10^5,2),
+         rate_indigenous = round(count_indigenous/word_count*10^5,2),
+         rate_refugee = round(count_refugee/word_count*10^5,2),
+         rate_corrupt = round(count_corrupt/word_count*10^5,2),
+         rate_torture = round(count_torture/word_count*10^5,2),
+         rate_oppress = round(count_oppress/word_count*10^5,2),
+         rate_censor = round(count_censor/word_count*10^5,2),
+         rate_forest = round(count_forest/word_count*10^5,2),
+         rate_logging = round(count_logging/word_count*10^5,2),
+         rate_environmental = round(count_environmental/word_count*10^5,2),
+         rate_climate_change = round(count_climate_change/word_count*10^5,2)) 
+
+write_csv(terms_summary, "processed_data/terms_summary.csv", na = "")
+```
+
+### Overall length of the country reports by year
+
+```{r}
+terms_summary %>%
+  mutate(word_count = prettyNum(word_count, big.mark = ",")) %>%
+  select(Year = year, `Number of country reports` = reports, `Total words` = word_count) %>%
+  datatable()
+```
+
+### Rate of mentions for specific terms/phrases by year
+
+All values shown are the rate of mentions per 100,000 words.
+
+```{r,warning = F,message = F}
+terms_summary %>%
+  select(Year = year,`Climate change` = rate_climate_change, `LGBT` = rate_lgbt, `Women` = rate_women,`Gender` = rate_gender,`Indigenous` = rate_indigenous, `Corrupt*` = rate_corrupt) %>%
+  datatable()
+```
+
+### Context of mentions of specific terms/phrases
+
+To understand the contextin which specific words/phrases of interest are used, we made searchable web tables displaying mentions in 2023 and 2044 together with preceding and subsequent text.
+
+#### "climate change"
+
+```{r,warning = F,message = F}
+term = "climate change"
+
+context <- reports %>%
+  mutate(report_text = tolower(report_text)) %>%
+  filter(grepl(term,report_text)) %>%
+  select(year,country,report_text)
+
+term_in_context <- tibble()
+
+for (y in c(2023,2024)) {
+  for(c in context$country) {
+  tmp <- context %>%
+    filter(year == y & country == c)
+  tmp2 <- kwic(tokens(tmp$report_text[1]),
+               pattern = phrase(term),
+               window = 20) %>%
+    as_tibble() %>%
+    mutate(year = y,country = c)
+  term_in_context <- bind_rows(term_in_context,tmp2) 
+  }
+}
+
+term_in_context %>%
+  unique() %>%
+  select(year,country,pre,pattern,post) %>%
+  datatable()
+```
+
+#### "indigenous"
+
+```{r,warning = F,message = F}
+term <- "indigenous"
+
+context <- reports %>%
+  mutate(report_text = tolower(report_text)) %>%
+  filter(grepl(term,report_text)) %>%
+  select(year,country,report_text)
+
+term_in_context <- tibble()
+
+for (y in c(2023,2024)) {
+  for(c in context$country) {
+  tmp <- context %>%
+    filter(year == y & country == c)
+  tmp2 <- kwic(tokens(tmp$report_text[1]),
+               pattern = phrase(term),
+               window = 20) %>%
+    as_tibble() %>%
+    mutate(year = y,country = c)
+  term_in_context <- bind_rows(term_in_context,tmp2) 
+  }
+}
+
+term_in_context %>%
+  unique() %>%
+  select(year,country,pre,pattern,post) %>%
+  datatable()
+
+```
+
+#### "corrupt\*"
+
+The asterisk ensures that words corrupt as their root, such as "corruption," are also included.
+
+```{r,warning = F,message = F}
+term <- "corrupt*"
+
+context <- reports %>%
+  mutate(report_text = tolower(report_text)) %>%
+  filter(grepl(term,report_text)) %>%
+  select(year,country,report_text)
+
+term_in_context <- tibble()
+
+for (y in c(2023,2024)) {
+  for(c in context$country) {
+  tmp <- context %>%
+    filter(year == y & country == c)
+  tmp2 <- kwic(tokens(tmp$report_text[1]),
+               pattern = phrase(term),
+               window = 20) %>%
+    as_tibble() %>%
+    mutate(year = y,country = c)
+  term_in_context <- bind_rows(term_in_context,tmp2) 
+  }
+}
+
+term_in_context %>%
+  unique() %>%
+  select(year,country,pre,pattern,post) %>%
+  datatable()
+```
