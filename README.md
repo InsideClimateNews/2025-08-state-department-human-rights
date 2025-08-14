@@ -1,6 +1,6 @@
 # State Department Human Rights Report Analysis
 
-Data and [R](https://www.r-project.org/) code to reproduce the analysis underlying [this Aug. 14, 2025 Inside Climate News article](https://insideclimatenews.org/news/), scrutinizing the text of the 2024 edition of the U.S. State Department's Country Reports on Human Rights Practices, compared to reports from previous years.
+Data and [R](https://www.r-project.org/) code to reproduce the analysis underlying [this Aug. 14, 2025 Inside Climate News article](https://insideclimatenews.org/news/14082025/us-annual-human-rights-reports-gutted/), scrutinizing the text of the 2024 edition of the U.S. State Department's Country Reports on Human Rights Practices, compared to reports from previous years.
 
 ### Methodology/code
 
