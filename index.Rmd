@@ -1,5 +1,5 @@
 ---
-title: "State Department human rights reports analysis"
+title: "US Guts Criticism of Indigenous Rights Abuses, Mentions of Climate Change From Annual Human Rights Reports"
 output: html_document
 ---
 
